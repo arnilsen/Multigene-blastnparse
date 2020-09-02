@@ -248,7 +248,7 @@ def parse_gb_full_files():
                     gene = ''.join(value)
                 elif 'gene' in key and ''.join(value) == gene:
                     gene = gene
-                elif 'gene' in key and str(gene).find(''.join(value)) is -1:#len(gene) != 0:
+                elif 'gene' in key and str(gene).find(''.join(value)) == -1:#len(gene) != 0:
                     gene = gene + str('-' + ''.join(value))
 
         #Check what vouchers are present and concatenate organism name and voucher together
