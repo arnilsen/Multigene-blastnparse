@@ -133,9 +133,9 @@ def fetch_seqs_from_txid():
     # there is a pesky nuccore entry that doesn't belong in that database. If it is not removed
     #then the gb parser fails
 
-    if '1562123491' in sequence_accession or '1796269881' in sequence_accession:
-        sequence_accession.remove('1562123491')
-        sequence_accession.remove('1796269881')
+    #if '1562123491' in sequence_accession or '1796269881' in sequence_accession:
+        #sequence_accession.remove('1562123491')
+        #sequence_accession.remove('1796269881')
 
 
     #Use epost to get webenv and query_key to speed up retrieving records
