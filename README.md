@@ -6,9 +6,10 @@ multigene_blastnparse.py is a simple script for retrieving associated sequences 
 
 multigene_blastnparse.py requires that python 3.x and biopython is installed. Installation instructions for python are available [here](https://www.python.org/downloads/), and biopython [here](https://biopython.org/wiki/Download).
 
-Use git clone to obtain the script, or copy and paste the script into a text editor.
+Use git clone to obtain the script, or copy and paste the script into a text editor and save the file as multigene_blastnparse.py.
 
 **Running the script**
+
 ```python
 python multigene_blastnparse.py -i <user supplied fasta file> -e <email required by NCBI>
 ```
