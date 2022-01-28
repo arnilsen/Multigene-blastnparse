@@ -14,7 +14,6 @@ import re
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description = 'Multigene blastn: pull all associated sequences from a blastn hit with the same specimen voucher',\
             epilog = textwrap.dedent('''
             Additional information:
-
             This script takes a fasta file of query sequences and blasts them against the nr database.
             It returns the csv file "collections_table.csv" containing all the all the blast matches and the associated hit data.
             If any additional sequences from the same specimen voucher are available then that accession number is included.
@@ -133,9 +132,10 @@ def fetch_seqs_from_txid():
     # there is a pesky nuccore entry that doesn't belong in that database. If it is not removed
     #then the gb parser fails
 
-    #if '1562123491' in sequence_accession or '1796269881' in sequence_accession:
-        #sequence_accession.remove('1562123491')
-        #sequence_accession.remove('1796269881')
+    #if '1562123491' in sequence_accession:
+    #    sequence_accession.remove('1562123491')
+    #elif '1796269881' in sequence_accession:
+    #    sequence_accession.remove('1796269881')
 
 
     #Use epost to get webenv and query_key to speed up retrieving records
@@ -173,116 +173,120 @@ def parse_gb_full_files():
     dic_gb = {}
 
     for record in record_iterator:
-        count += 1
-        organism = ''
-        accession = record.name
-        isolate = ''
-        specimen_voucher = ''
-        sequence = record.seq
-        gene = ''
-        header_gene = ''
-        gene_for_table = ''
-        header = record.description.lower()
-        strain = ''
-        clone = ''
-        species_col = ''
+        try:
+            count += 1
+            organism = ''
+            accession = record.name
+            isolate = ''
+            specimen_voucher = ''
+            sequence = record.seq
+            gene = ''
+            header_gene = ''
+            gene_for_table = ''
+            header = record.description.lower()
+            strain = ''
+            clone = ''
+            species_col = ''
 
-        #Check if the sequence is ITS, LSU or SSU
-        if 'internal transcribed spacer' in header or 'its1' in header or 'its2' in header or 'its region' in header:
-            header_gene = 'ITS'
-        elif 'external transcribed spacer' in header:
-            header_gene = 'ETS'
-        elif '28s' in header or 'large subunit' in header or '25s' in header and 'internal transcribed spacer' not in header:
-            header_gene = 'LSU'
-        elif '18s' in header or 'small subunit' in header and 'internal transcribed spacer' not in header and '5.8s' not in header:
-            header_gene = 'SSU'
-        elif 'psbA-trnH' in header:
-            header_gene = 'psbA-trnH'
-        elif 'psbK-psbI' in header:
-            header_gene = 'psbK-psbI'
-        elif 'atpF-atpH' in header:
-            header_gene = 'atpF-atpH'
-        else:
-            header_gene = 'unknown'
+            #Check if the sequence is ITS, LSU or SSU
+            if 'internal transcribed spacer' in header or 'its1' in header or 'its2' in header or 'its region' in header:
+                header_gene = 'ITS'
+            elif 'external transcribed spacer' in header:
+                header_gene = 'ETS'
+            elif '28s' in header or 'large subunit' in header or '25s' in header and 'internal transcribed spacer' not in header:
+                header_gene = 'LSU'
+            elif '18s' in header or 'small subunit' in header and 'internal transcribed spacer' not in header and '5.8s' not in header:
+                header_gene = 'SSU'
+            elif 'psbA-trnH' in header:
+                header_gene = 'psbA-trnH'
+            elif 'psbK-psbI' in header:
+                header_gene = 'psbK-psbI'
+            elif 'atpF-atpH' in header:
+                header_gene = 'atpF-atpH'
+            else:
+                header_gene = 'unknown'
 
-        #Check if the sequence is from a type specimen, often contained in the header
-        if 'type' in header:
-            header_gene = header_gene + '-TYPE'
+            #Check if the sequence is from a type specimen, often contained in the header
+            if 'type' in header:
+                header_gene = header_gene + '-TYPE'
 
-        #Often the ITS and LSU regions are concatenated together. Make a length cut off of
-        #700 bp and try and account for some length variation by making the min len difference of 100 (800 total length)
-        elif header_gene == 'ITS' and len(sequence) > 700 and len(sequence) - 700 >= 100:
-            header_gene = 'ITS and LSU?'
-        else:
-            header_gene = header_gene
+            #Often the ITS and LSU regions are concatenated together. Make a length cut off of
+            #700 bp and try and account for some length variation by making the min len difference of 100 (800 total length)
+            elif header_gene == 'ITS' and len(sequence) > 700 and len(sequence) - 700 >= 100:
+                header_gene = 'ITS and LSU?'
+            else:
+                header_gene = header_gene
 
-        #Try and catch cases where the collection is undescribed and also has the voucher in the
-        #organism line e.g. Cortinarius sp. OTA00001
-        if record.annotations['organism'].split(' ')[1] == 'sp.':
-            organism = record.annotations['organism'].split(' ')
-            organism = organism[:2]
-            organism = '_'.join(organism).replace('.', '')
-        #replace white space with '_'
-        elif record.annotations['organism'].split(' ')[1] != 'sp.':
-            organism = record.annotations['organism'].replace(' ', '_')
+            #Try and catch cases where the collection is undescribed and also has the voucher in the
+            #organism line e.g. Cortinarius sp. OTA00001
+            if record.annotations['organism'].split(' ')[1] == 'sp.':
+                organism = record.annotations['organism'].split(' ')
+                organism = organism[:2]
+                organism = '_'.join(organism).replace('.', '')
+            #replace white space with '_'
+            elif record.annotations['organism'].split(' ')[1] != 'sp.':
+                organism = record.annotations['organism'].replace(' ', '_')
 
 
-        #Find some sort of voucher and gene
-        for feature in record.features:
-            for key, value in feature.qualifiers.items():
-                if 'isolate' in key:
-                    isolate = ''.join(value)
-                elif 'specimen_voucher' in key:
-                	#[David] specimen voucher are coded as "XXXXX/XX" by convention, but
-                	#some people put it as "XXXXX_XX". So, change the last "_" to "\".
-                    specimen_voucher_temp = ''.join(value)
-                    specimen_voucher = re.sub(r"(\S+)_(\S+)$", r"\1/\2", specimen_voucher_temp)
-                elif 'strain' in key:
-                    strain = ''.join(value)
-                elif 'clone' in key:
-                    clone = ''.join(value)
-                #Check what the gene is. If the sequence is from a single gene with multiple exons
-                #then only the gene name will taken. If there are multiple genes present in the sequence
-                #then the different gene names will be concatenated together e.g. trnL-trnF
-                elif 'gene' in key and len(gene) == 0:
-                    gene = ''.join(value)
-                elif 'gene' in key and ''.join(value) == gene:
-                    gene = gene
-                elif 'gene' in key and str(gene).find(''.join(value)) == -1:#len(gene) != 0:
-                    gene = gene + str('-' + ''.join(value))
+            #Find some sort of voucher and gene
+            for feature in record.features:
+                for key, value in feature.qualifiers.items():
+                    if 'isolate' in key:
+                        isolate = ''.join(value)
+                    elif 'specimen_voucher' in key:
+                        #[David] specimen voucher are coded as "XXXXX/XX" by convention, but
+                        #some people put it as "XXXXX_XX". So, change the last "_" to "\".
+                        specimen_voucher_temp = ''.join(value)
+                        specimen_voucher = re.sub(r"(\S+)_(\S+)$", r"\1/\2", specimen_voucher_temp)
+                    elif 'strain' in key:
+                        strain = ''.join(value)
+                    elif 'clone' in key:
+                        clone = ''.join(value)
+                    #Check what the gene is. If the sequence is from a single gene with multiple exons
+                    #then only the gene name will taken. If there are multiple genes present in the sequence
+                    #then the different gene names will be concatenated together e.g. trnL-trnF
+                    elif 'gene' in key and len(gene) == 0:
+                        gene = ''.join(value)
+                    elif 'gene' in key and ''.join(value) == gene:
+                        gene = gene
+                    elif 'gene' in key and str(gene).find(''.join(value)) == -1:#len(gene) != 0:
+                        gene = gene + str('-' + ''.join(value))
 
-        #Check what vouchers are present and concatenate organism name and voucher together
-        #the specimen voucher has presidence over isolate, strain, clone
-        if len(specimen_voucher) != 0:
-            species_col = organism + '__' + specimen_voucher
-        elif len(specimen_voucher) == 0 and len(isolate) != 0:
-            species_col = organism + '__' + isolate
-        elif len(specimen_voucher) == 0 and len(isolate) == 0 and len(strain) != 0:
-            species_col = organism + '__' + strain
-        elif len(specimen_voucher) == 0 and len(isolate) == 0 and len(strain) == 0 and len(clone) != 0:
-            species_col = organism + '__' + clone
-        elif len(specimen_voucher) == 0 and len(isolate) == 0 and len(strain) == 0 and len(clone) == 0:
-            no_voucher_num += 1
-            species_col = organism + '__no_voucher_{}'.format(str(no_voucher_num))
+            #Check what vouchers are present and concatenate organism name and voucher together
+            #the specimen voucher has presidence over isolate, strain, clone
+            if len(specimen_voucher) != 0:
+                species_col = organism + '__' + specimen_voucher
+            elif len(specimen_voucher) == 0 and len(isolate) != 0:
+                species_col = organism + '__' + isolate
+            elif len(specimen_voucher) == 0 and len(isolate) == 0 and len(strain) != 0:
+                species_col = organism + '__' + strain
+            elif len(specimen_voucher) == 0 and len(isolate) == 0 and len(strain) == 0 and len(clone) != 0:
+                species_col = organism + '__' + clone
+            elif len(specimen_voucher) == 0 and len(isolate) == 0 and len(strain) == 0 and len(clone) == 0:
+                no_voucher_num += 1
+                species_col = organism + '__no_voucher_{}'.format(str(no_voucher_num))
 
-        #replace all spaces in collection names, otherwise it will cause issues when the fasta file is imported into other software
-        species_col = species_col.replace(' ', '-')
+            #replace all spaces in collection names, otherwise it will cause issues when the fasta file is imported into other software
+            species_col = species_col.replace(' ', '-')
 
-        #check that ITS not in header
-        if len(gene) != 0: #and header_gene == 'unknown'
-            gene_for_table = gene
-        else:
-            gene_for_table = header_gene
+            #check that ITS not in header
+            if len(gene) != 0: #and header_gene == 'unknown'
+                gene_for_table = gene
+            else:
+                gene_for_table = header_gene
 
-        #add species_col to dic_gb with the associated regions and accessions
-        if species_col not in dic_gb:
-            dic_gb[species_col] = {gene_for_table:accession}
-        elif species_col in dic_gb:
-            dic_gb[species_col][gene_for_table] = accession
+            #add species_col to dic_gb with the associated regions and accessions
+            if species_col not in dic_gb:
+                dic_gb[species_col] = {gene_for_table:accession}
+            elif species_col in dic_gb:
+                dic_gb[species_col][gene_for_table] = accession
 
-        #create a fasta file of all the sequences from the .gb file
-        with open('Temp_File_temp_all_GB_sequences.fasta','a+') as fastafile:
-            fastafile.write('>{} {} {}\n{}\n'.format(species_col, accession, gene_for_table, str(sequence)))
+            #create a fasta file of all the sequences from the .gb file
+            with open('Temp_File_temp_all_GB_sequences.fasta','a+') as fastafile:
+                if len(sequence) > 0:
+                    fastafile.write('>{} {} {}\n{}\n'.format(species_col, accession, gene_for_table, str(sequence)))
+        except Bio.Seq.UndefinedSequenceError:
+            break
 
 
     #check which blast matches are in dic_gb against blast_matches dictionary and store matches
@@ -388,5 +392,3 @@ if __name__ == '__main__':
         sec_diff = round(finish - start, 1)
         min_dif = round(sec_diff/60, 1)
         print('Time in seconds {}, or {} minutes'.format(sec_diff, min_dif))
-
-
