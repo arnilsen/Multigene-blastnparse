@@ -129,14 +129,6 @@ def fetch_seqs_from_txid():
                 sequence_accession.append(seq_GI)
 
 
-    # there is a pesky nuccore entry that doesn't belong in that database. If it is not removed
-    #then the gb parser fails
-
-    #if '1562123491' in sequence_accession:
-    #    sequence_accession.remove('1562123491')
-    #elif '1796269881' in sequence_accession:
-    #    sequence_accession.remove('1796269881')
-
 
     #Use epost to get webenv and query_key to speed up retrieving records
     epost_var = Entrez.epost("nuccore", id=",".join(sequence_accession))
@@ -283,10 +275,10 @@ def parse_gb_full_files():
 
             #create a fasta file of all the sequences from the .gb file
             with open('Temp_File_temp_all_GB_sequences.fasta','a+') as fastafile:
-                if len(sequence) > 0:
-                    fastafile.write('>{} {} {}\n{}\n'.format(species_col, accession, gene_for_table, str(sequence)))
+                fastafile.write('>{} {} {}\n{}\n'.format(species_col, accession, gene_for_table, str(sequence)))
         except Bio.Seq.UndefinedSequenceError:
-            break
+            print("{} doesn't include a sequence, it might be a master record".format(record.name))
+            continue
 
 
     #check which blast matches are in dic_gb against blast_matches dictionary and store matches
