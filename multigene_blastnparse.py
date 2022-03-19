@@ -189,12 +189,14 @@ def parse_gb_full_files():
                 header_gene = 'LSU'
             elif '18s' in header or 'small subunit' in header and 'internal transcribed spacer' not in header and '5.8s' not in header:
                 header_gene = 'SSU'
-            elif 'psbA-trnH' in header:
+            elif 'psba-trnh' in header:
                 header_gene = 'psbA-trnH'
-            elif 'psbK-psbI' in header:
+            elif 'psbk-psbi' in header:
                 header_gene = 'psbK-psbI'
-            elif 'atpF-atpH' in header:
+            elif 'atpf-atph' in header:
                 header_gene = 'atpF-atpH'
+            elif 'trnl-trnf ' in header:
+                header_gene = 'trnL-trnF'
             else:
                 header_gene = 'unknown'
 
